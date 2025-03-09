@@ -19,5 +19,17 @@
     "react-dom": "^18.2.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.20",
+    "bootstrap": "^5.3.3",
+    "canvas": "^3.1.0",
+    "canvas-confetti": "^1.9.3",
+    "firebase": "^11.4.0",
+    "postcss": "^8.5.3",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-bootstrap": "^2.10.9",
+    "react-confetti": "^6.4.0",
+    "tailwindcss": "^4.0.12"
   }
 }
