@@ -1,4 +1,5 @@
-// src/firebaseConfig.js
+// src/firebaseConfig.
+// 
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
