@@ -43,6 +43,7 @@ function App() {
     localStorage.setItem("theme", newTheme);
   };
 
+  
   // Handle image upload
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -60,33 +61,51 @@ function App() {
   const addMemory = async () => {
     if (newMemory.img && newMemory.title) {
       setUploading(true);
-
+  
       try {
-        const imageRef = ref(storage, `images/${newMemory.img.name}`);
-        await uploadBytes(imageRef, newMemory.img);
-        const imageUrl = await getDownloadURL(imageRef);
-
-        await addDoc(collection(db, "memories"), {
-          title: newMemory.title,
-          caption: newMemory.caption,
-          img: imageUrl,
-          date: new Date().toLocaleString(),
-        });
-
-        setNewMemory({ img: null, title: "", caption: "" });
-        setPreview(null);
-        setUploading(false);
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 3000);
+        const imageRef = ref(storage, `images/${Date.now()}_${newMemory.img.name}`);
+        const uploadTask = uploadBytes(imageRef, newMemory.img);
+  
+        // Track upload progress
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Upload is ${progress}% done`);
+          },
+          (error) => {
+            console.error("Upload failed:", error);
+            alert("Failed to upload image. Please try again.");
+            setUploading(false);
+          },
+          async () => {
+            const imageUrl = await getDownloadURL(imageRef);
+  
+            await addDoc(collection(db, "memories"), {
+              title: newMemory.title,
+              caption: newMemory.caption,
+              img: imageUrl,
+              date: new Date().toLocaleString(),
+            });
+  
+            setNewMemory({ img: null, title: "", caption: "" });
+            setPreview(null);
+            setUploading(false);
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 3000);
+  
+            console.log("Memory uploaded and saved to Firestore!");
+          }
+        );
       } catch (error) {
         console.error("Error uploading memory:", error);
+        alert("Something went wrong. Check the console for details.");
         setUploading(false);
       }
     } else {
       alert("Please add an image and title!");
     }
-  };
-
+  };  
   const handleLogin = () => {
     if (password === correctPassword) {
       setLoggedIn(true);
