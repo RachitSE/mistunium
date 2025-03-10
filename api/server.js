@@ -21,7 +21,7 @@ app.get("/api/memories", async (req, res) => {
 
     // Use the search API to fetch images with metadata
     const response = await axios.get(
-      `https://api.cloudinary.com/v1_1/dmibsjyf5/resources/image/upload`,
+      `https://api.cloudinary.com/v1_1/dmibsjyf5/resources/image/search`,
       {
         auth: {
           username: apiKey,

@@ -47,22 +47,9 @@ function App() {
   };
 
   useEffect(() => {
-    const fetchMemories = async () => {
-      try {
-        const response = await axios.get("/api/memories", {
-          params: {
-            context: true, // Ask for context data
-          },
-        });
-        console.log("Fetched memories:", response.data);
-        setMemories(response.data);
-      } catch (error) {
-        console.error("Error fetching memories:", error);
-      }
-    };
-
     fetchMemories();
   }, []);
+  
 
   const changeTheme = (newTheme) => {
     setTheme(newTheme);
