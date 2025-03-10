@@ -26,7 +26,7 @@ function App() {
   // Fetch images directly from Cloudinary
   const fetchMemories = async () => {
     try {
-      const response = await axios.get("api/memories");
+      const response = await axios.get("/api/memories");
 
       console.log("Fetched memories:", response.data); // Log the raw response
 
@@ -49,7 +49,7 @@ function App() {
   useEffect(() => {
     const fetchMemories = async () => {
       try {
-        const response = await axios.get("http://localhost:3000/api/memories", {
+        const response = await axios.get("/api/memories", {
           params: {
             context: true, // Ask for context data
           },
