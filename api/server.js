@@ -19,34 +19,28 @@ app.get("/api/memories", async (req, res) => {
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-    // Use the search API to fetch images with metadata
     const response = await axios.get(
-      `https://api.cloudinary.com/v1_1/dmibsjyf5/resources/image/search`,
+      `https://api.cloudinary.com/v1_1/dmibsjyf5/resources/image`, 
       {
-        auth: {
-          username: apiKey,
-          password: apiSecret,
-        },
+        auth: { username: apiKey, password: apiSecret },
       }
     );
-
-    console.log(response.data.resources);
-
 
     const memories = response.data.resources.map((item) => ({
       id: item.public_id,
       img: item.secure_url,
-      title: item.context?.custom?.title || item.public_id.split("/").pop(),
+      title: item.context?.custom?.title || item.public_id,
       caption: item.context?.custom?.caption || "No caption added",
       date: new Date(item.created_at).toLocaleString(),
     }));
 
     res.json(memories);
   } catch (error) {
-    console.error("Failed to fetch images:", error.response?.data || error.message);
+    console.error("Failed to fetch images:", error.message);
     res.status(500).send("Failed to fetch memories");
   }
 });
+
 
 
 app.listen(port, () => {

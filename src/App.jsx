@@ -166,11 +166,7 @@ function App() {
         <Carousel className="carousel" interval={3000} pause="hover">
           {memories.map((memory) => (
             <Carousel.Item key={memory.id}>
-              <img
-                src={memory.img}
-                alt={memory.title}
-                className="carousel-img"
-              />
+              <img src={memory.img} alt={memory.title} className="carousel-img" />
               <Carousel.Caption>
                 <h3>{memory.title}</h3>
                 <p>{memory.caption}</p>
