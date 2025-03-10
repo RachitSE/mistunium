@@ -26,7 +26,8 @@ function App() {
   // Fetch images directly from Cloudinary
   const fetchMemories = async () => {
     try {
-      const response = await axios.get("/api/memories");
+      const response = await axios.get("https://memory-gallery-server.onrender.com/api/memories");
+
 
       console.log("Fetched memories:", response.data); // Log the raw response
 
