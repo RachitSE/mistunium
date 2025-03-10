@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Carousel from "react-bootstrap/Carousel";
 import Confetti from "react-confetti";
-import { storage, db } from "./firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
+import axios from "axios";
 import "./App.css";
 
 function App() {
@@ -25,17 +23,45 @@ function App() {
 
   const correctPassword = "drake";
 
-  // Real-time data sync
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "memories"), (snapshot) => {
-      const fetchedMemories = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setMemories(fetchedMemories);
-    });
+  // Fetch images directly from Cloudinary
+  const fetchMemories = async () => {
+    try {
+      const response = await axios.get("api/memories");
 
-    return () => unsubscribe();
+      console.log("Fetched memories:", response.data); // Log the raw response
+
+      const fetchedMemories = response.data.map((item, index) => ({
+        id: item.public_id || item.asset_id || `memory-${index}`, // Ensure a unique ID
+        img: item.secure_url,
+        title: item.context?.custom?.title || "Untitled",
+        caption: item.context?.custom?.caption || "No caption added",
+        date: item.created_at ? new Date(item.created_at).toLocaleString() : "Invalid Date",
+      }));
+
+      console.log("Mapped memories:", fetchedMemories); // Log the mapped data
+
+      setMemories(fetchedMemories);
+    } catch (error) {
+      console.error("Failed to fetch images:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchMemories = async () => {
+      try {
+        const response = await axios.get("http://localhost:3000/api/memories", {
+          params: {
+            context: true, // Ask for context data
+          },
+        });
+        console.log("Fetched memories:", response.data);
+        setMemories(response.data);
+      } catch (error) {
+        console.error("Error fetching memories:", error);
+      }
+    };
+
+    fetchMemories();
   }, []);
 
   const changeTheme = (newTheme) => {
@@ -43,8 +69,6 @@ function App() {
     localStorage.setItem("theme", newTheme);
   };
 
-  
-  // Handle image upload
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -57,55 +81,67 @@ function App() {
     }
   };
 
-  // Add memory with Firebase upload
+  const uploadToCloudinary = async (file, title, caption) => {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+    formData.append("context", `title=${title}|caption=${caption}`);
+
+    try {
+      const response = await axios.post(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        formData
+      );
+
+      console.log("Cloudinary upload response:", response.data); // Log the full response
+
+      return response.data; // Return the full response
+    } catch (error) {
+      console.error("Cloudinary upload failed:", error);
+      alert("Failed to upload image. Check console for details.");
+      return null;
+    }
+  };
+
   const addMemory = async () => {
     if (newMemory.img && newMemory.title) {
       setUploading(true);
-  
+
       try {
-        const imageRef = ref(storage, `images/${Date.now()}_${newMemory.img.name}`);
-        const uploadTask = uploadBytes(imageRef, newMemory.img);
-  
-        // Track upload progress
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Upload is ${progress}% done`);
-          },
-          (error) => {
-            console.error("Upload failed:", error);
-            alert("Failed to upload image. Please try again.");
-            setUploading(false);
-          },
-          async () => {
-            const imageUrl = await getDownloadURL(imageRef);
-  
-            await addDoc(collection(db, "memories"), {
-              title: newMemory.title,
-              caption: newMemory.caption,
-              img: imageUrl,
-              date: new Date().toLocaleString(),
-            });
-  
-            setNewMemory({ img: null, title: "", caption: "" });
-            setPreview(null);
-            setUploading(false);
-            setShowConfetti(true);
-            setTimeout(() => setShowConfetti(false), 3000);
-  
-            console.log("Memory uploaded and saved to Firestore!");
-          }
-        );
+        const uploadResponse = await uploadToCloudinary(newMemory.img, newMemory.title, newMemory.caption);
+
+        if (uploadResponse) {
+          const newEntry = {
+            id: uploadResponse.public_id || `memory-${Date.now()}`,
+            title: newMemory.title,
+            caption: newMemory.caption,
+            img: uploadResponse.secure_url,
+            date: new Date().toLocaleString(),
+          };
+
+          console.log("New entry added:", newEntry); // Log the new entry
+
+          setMemories((prev) => [...prev, newEntry]);
+          setNewMemory({ img: null, title: "", caption: "" });
+          setPreview(null);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
+
+          fetchMemories(); // Refresh the list
+        }
       } catch (error) {
-        console.error("Error uploading memory:", error);
-        alert("Something went wrong. Check the console for details.");
+        console.error("Error adding memory:", error);
+      } finally {
         setUploading(false);
       }
     } else {
       alert("Please add an image and title!");
     }
-  };  
+  };
+
   const handleLogin = () => {
     if (password === correctPassword) {
       setLoggedIn(true);
@@ -143,7 +179,11 @@ function App() {
         <Carousel className="carousel" interval={3000} pause="hover">
           {memories.map((memory) => (
             <Carousel.Item key={memory.id}>
-              <img src={memory.img} alt={memory.title} className="carousel-img" />
+              <img
+                src={memory.img}
+                alt={memory.title}
+                className="carousel-img"
+              />
               <Carousel.Caption>
                 <h3>{memory.title}</h3>
                 <p>{memory.caption}</p>
@@ -158,24 +198,18 @@ function App() {
 
       <div className="memory-form">
         <h2>Add a New Memory</h2>
-        {preview && (
-          <img src={preview} alt="Preview" className="image-preview" />
-        )}
+        {preview && <img src={preview} alt="Preview" className="image-preview" />}
         <input type="file" accept="image/*" onChange={handleFileChange} />
         <input
           type="text"
           placeholder="Title"
           value={newMemory.title}
-          onChange={(e) =>
-            setNewMemory({ ...newMemory, title: e.target.value })
-          }
+          onChange={(e) => setNewMemory({ ...newMemory, title: e.target.value })}
         />
         <textarea
           placeholder="Caption"
           value={newMemory.caption}
-          onChange={(e) =>
-            setNewMemory({ ...newMemory, caption: e.target.value })
-          }
+          onChange={(e) => setNewMemory({ ...newMemory, caption: e.target.value })}
         />
         <button onClick={addMemory} disabled={uploading}>
           {uploading ? "Uploading..." : "Add Memory"}
